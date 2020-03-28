@@ -2,43 +2,44 @@ package main
 
 import (
     "fmt"
+    "time"
 
-    "github.com/davecgh/go-spew/spew"
-    "github.com/slack-go/slack"
+    "github.com/fbessez/cavalry/config"
+    "github.com/fbessez/cavalry/client"
 )
 
 const (
-    ApiToken = "YOUR TOKEN GOES HERE"
-    UserId   = "YOUR USER ID GOES HERE"
+    hoursInDay = 24 
+    refreshPeriod = 30 // minutes
 )
 
 func main() {
-    client := getSlackClient()
+    for {
+        if isWorkingHours() {
+            client.SetActive()
+            fmt.Printf("Sleeping for %d minutes...", refreshPeriod)
+            time.Sleep(refreshPeriod * time.Minute)
+        } else {
+            hoursTilStart := hoursTilStart()
+            fmt.Printf("Sleeping for %d hours...", hoursTilStart)
 
-    getUserInfo(client)
-    getUserPresence(client)
+            time.Sleep(time.Duration(hoursTilStart) * time.Hour)
+        }
+    }
 }
 
-func getSlackClient() (client *slack.Client) {
-    return slack.New(ApiToken)
+func isWorkingHours() bool {
+    currentHour := time.Now().Hour()
+
+    return currentHour >= config.CONSTANTS.StartHour && currentHour <= config.CONSTANTS.EndHour
 }
 
-func getUserInfo(client *slack.Client) {
-    user, err := client.GetUserInfo(UserId)
-    if err != nil {
-        fmt.Printf("%s\n", err)
-        return
+func hoursTilStart() int {
+    currentHour := time.Now().Hour()
+
+    if currentHour < hoursInDay {
+        return hoursInDay - currentHour + config.CONSTANTS.StartHour
     }
 
-    spew.Dump(user)
+    return config.CONSTANTS.StartHour - currentHour
 }
-
-func getUserPresence(client *slack.Client) {
-    presence, err := client.GetUserPresence(UserId)
-    if err != nil {
-        fmt.Printf("%s\n", err)
-        return
-    }
-    spew.Dump(presence)
-}
-
